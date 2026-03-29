@@ -26,12 +26,14 @@
 
 namespace fs = std::filesystem;
 
-// 常量定义
+// 常量定义 - 注意不要重复定义Windows已有的常量
+// WM_DEVICECHANGE 已经在 windows.h 中定义了
+// DBT_DEVICEARRIVAL 和 DBT_DEVICEREMOVECOMPLETE 也已经在 dbt.h 中定义了
+// 所以这些常量不需要重新定义，只需要使用即可
+
+// 自定义消息常量
 const UINT WM_NOTIFY_CALLBACK = WM_USER + 100;
-const int WM_TRAYICON = WM_USER + 101;
-const UINT WM_DEVICECHANGE = 0x0219;
-const DWORD DBT_DEVICEARRIVAL = 0x8000;
-const DWORD DBT_DEVICEREMOVECOMPLETE = 0x8004;
+const UINT WM_TRAYICON = WM_USER + 101;
 
 // PPT扩展名
 const std::set<std::wstring> PPT_EXTENSIONS = {
