@@ -1,0 +1,30 @@
+name: Build with MSVC
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+    
+    - name: Compile main.cpp
+      run: |
+        cl /EHsc /Fe:PPTMonitor.exe main.cpp user32.lib shell32.lib advapi32.lib psapi.lib ole32.lib oleaut32.lib
+    
+    - name: Upload executable as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: main-executable
+        path: PPTMonitor.exe
