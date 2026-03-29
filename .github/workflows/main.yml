@@ -21,7 +21,8 @@ jobs:
     
     - name: Compile main.cpp
       run: |
-        cl /EHsc /std:c++17 /Fe:PPTMonitor.exe main.cpp user32.lib shell32.lib advapi32.lib psapi.lib ole32.lib oleaut32.lib
+        run: |
+          cl /EHsc /std:c++17 /MT /O2 /PDB /D_WIN32_WINNT=0x0601 /Fe:PPTMonitor.exe main.cpp user32.lib shell32.lib advapi32.lib psapi.lib ole32.lib oleaut32.lib
     
     - name: Upload executable as artifact
       uses: actions/upload-artifact@v4
