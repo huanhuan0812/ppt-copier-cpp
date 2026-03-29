@@ -17,6 +17,7 @@
 #include <ctime>
 #include <algorithm>
 #include <filesystem>
+#include <functional>
 
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "user32.lib")
@@ -450,15 +451,15 @@ public:
     void StartListening(std::function<void(const std::vector<std::wstring>&, bool)> cb) {
         callback = cb;
         
-        WNDCLASSEX wc = {};
-        wc.cbSize = sizeof(WNDCLASSEX);
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(WNDCLASSEXW);
         wc.lpfnWndProc = WndProc;
         wc.hInstance = GetModuleHandle(NULL);
         wc.lpszClassName = L"PPTMonitorDeviceListener";
         
-        RegisterClassEx(&wc);
+        RegisterClassExW(&wc);
         
-        hwnd = CreateWindowEx(
+        hwnd = CreateWindowExW(
             0,
             L"PPTMonitorDeviceListener",
             L"PPTMonitorDeviceListenerWindow",
@@ -479,11 +480,11 @@ public:
             }
             
             // 注册设备通知
-            DEV_BROADCAST_DEVICEINTERFACE dbdi = {};
-            dbdi.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
+            DEV_BROADCAST_DEVICEINTERFACE_W dbdi = {};
+            dbdi.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE_W);
             dbdi.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
             
-            HDEVNOTIFY hDevNotify = RegisterDeviceNotification(
+            HDEVNOTIFY hDevNotify = RegisterDeviceNotificationW(
                 hwnd,
                 &dbdi,
                 DEVICE_NOTIFY_WINDOW_HANDLE
@@ -589,7 +590,7 @@ private:
             
             if (fileManager.IsAlreadyProcessed(filePath)) {
                 time_t storedMtime = fileManager.GetFileMtime(filePath);
-                if (abs(fileStat.st_mtime - storedMtime) < 1) {
+                if (abs(static_cast<long long>(fileStat.st_mtime - storedMtime)) < 1) {
                     return false;
                 }
                 else {
@@ -689,8 +690,8 @@ private:
                     std::transform(name.begin(), name.end(), name.begin(), ::towlower);
                     
                     if (name.find(L"powerpnt") == 0) {
-                        // 获取进程打开的文件
-                        // 这里简化处理，实际需要通过其他方式获取
+                        // 获取进程打开的文件 - 简化处理
+                        // 实际应用中需要通过其他API获取
                     }
                 }
                 CloseHandle(hProcess);
@@ -699,8 +700,8 @@ private:
     }
 
     void MonitorViaCOM() {
-        // COM监控需要更复杂的实现，这里简化处理
-        // 实际可以通过GetActiveObject等API获取PowerPoint实例
+        // COM监控 - 简化处理
+        // 实际可通过GetActiveObject获取PowerPoint实例
     }
 
     void CleanupOldBackups() {
@@ -712,19 +713,16 @@ private:
                 if (entry.is_directory()) {
                     std::wstring dirName = entry.path().filename().wstring();
                     
-                    struct tm tm_dir;
-                    if (wcsftime(const_cast<wchar_t*>(dirName.c_str()), dirName.length() + 1, L"%Y-%m-%d", &tm_dir)) {
-                        std::tm tm = {};
-                        std::wistringstream iss(dirName);
-                        int year, month, day;
-                        wchar_t dash;
-                        iss >> year >> dash >> month >> dash >> day;
+                    std::wistringstream iss(dirName);
+                    int year, month, day;
+                    wchar_t dash;
+                    if (iss >> year >> dash >> month >> dash >> day) {
+                        struct tm tm_dir = {};
+                        tm_dir.tm_year = year - 1900;
+                        tm_dir.tm_mon = month - 1;
+                        tm_dir.tm_mday = day;
                         
-                        tm.tm_year = year - 1900;
-                        tm.tm_mon = month - 1;
-                        tm.tm_mday = day;
-                        
-                        time_t dirTime = mktime(&tm);
+                        time_t dirTime = mktime(&tm_dir);
                         auto dirTimePoint = std::chrono::system_clock::from_time_t(dirTime);
                         
                         if (dirTimePoint < retentionTime) {
@@ -1012,7 +1010,9 @@ private:
     }
 
     void OpenConfigFile() {
-        std::wstring configFile = fs::path(configManager.GetBackupDir()).parent_path().wstring() + L"\\ppt_monitor.ini";
+        wchar_t exePath[MAX_PATH];
+        GetModuleFileNameW(NULL, exePath, MAX_PATH);
+        std::wstring configFile = fs::path(exePath).parent_path().wstring() + L"\\ppt_monitor.ini";
         ShellExecuteW(NULL, L"open", configFile.c_str(), NULL, NULL, SW_SHOW);
     }
 
@@ -1028,6 +1028,7 @@ private:
     }
 
     void CreateTrayIcon() {
+        memset(&nid, 0, sizeof(nid));
         nid.cbSize = sizeof(NOTIFYICONDATAW);
         nid.hWnd = hwnd;
         nid.uID = 1;
